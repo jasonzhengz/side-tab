@@ -166,6 +166,7 @@ body {
   background: linear-gradient(90deg, transparent, var(--divider), transparent);
   margin: 8px 12px 12px;
   border-radius: 999px;
+  flex: 0 0 auto;
 }
 
 .tab-collections {
