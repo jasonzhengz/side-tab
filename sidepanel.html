@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Side Tabs</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="pinned-area">
+        <div class="pinned-label">Pinned</div>
+        <div id="pinned-tabs" class="pinned-tabs" role="list"></div>
+      </header>
+      <div class="divider"></div>
+      <main id="tab-collections" class="tab-collections" role="list"></main>
+    </div>
+    <template id="tab-item-template">
+      <div class="tab-item" data-tab-id="" role="listitem">
+        <div class="tab-main" data-tab-id="" role="button" tabindex="0">
+          <div class="tab-favicon" aria-hidden="true"></div>
+          <div class="tab-text">
+            <div class="tab-title"></div>
+            <div class="tab-url"></div>
+          </div>
+        </div>
+        <button class="tab-menu-button" type="button" aria-label="Show tab options" title="Tab options">
+          <span aria-hidden="true">...</span>
+        </button>
+      </div>
+    </template>
+    <template id="group-template">
+      <section class="tab-group" aria-label="Tab group">
+        <button class="group-header" type="button">
+          <span class="group-color" aria-hidden="true"></span>
+          <span class="group-title"></span>
+          <span class="group-count"></span>
+        </button>
+        <div class="group-body" role="list"></div>
+      </section>
+    </template>
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

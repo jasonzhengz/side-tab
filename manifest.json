@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Arc-Style Side Tabs",
+  "description": "Show pinned and grouped tabs in an Arc-inspired side panel.",
+  "version": "0.1.0",
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "permissions": ["tabs", "tabGroups", "sidePanel"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Show Side Tabs"
+  }
+}
