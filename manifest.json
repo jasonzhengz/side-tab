@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Arc-Style Side Tabs",
+  "name": "Side Tabs",
   "description": "Show pinned and grouped tabs in an Arc-inspired side panel.",
   "version": "0.1.0",
   "icons": {
