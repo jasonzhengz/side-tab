@@ -10,7 +10,7 @@
   --text-subtle: rgba(28, 32, 36, 0.45);
   --accent: rgba(255, 255, 255, 0.82);
   --active-border: rgba(70, 80, 90, 0.18);
-  --active-shadow: 0 10px 24px rgba(28, 32, 36, 0.12);
+  --active-shadow: 0 5px 14px rgba(28, 32, 36, 0.08);
   --hover: rgba(255, 255, 255, 0.4);
   --active: rgba(255, 255, 255, 0.72);
   --radius-large: 18px;
@@ -139,8 +139,8 @@ body {
 
 .pinned-tab.active {
   border-color: var(--active-border);
-  background: var(--active);
-  box-shadow: var(--active-shadow);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
 }
 
 .pinned-tab img,
@@ -164,7 +164,8 @@ body {
 .divider {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--divider), transparent);
-  margin: 0 12px;
+  margin: 8px 12px 12px;
+  border-radius: 999px;
 }
 
 .tab-collections {
@@ -263,7 +264,7 @@ body {
 
 .tab-item.drop-target-unpin .tab-main {
   background: rgba(255, 255, 255, 0.55);
-  border-color: var(--active-border);
+  border-color: rgba(120, 130, 140, 0.5);
 }
 
 .tab-item.is-renaming .tab-main {
@@ -301,9 +302,9 @@ body {
 }
 
 .tab-item.active .tab-main {
-  background: var(--active);
-  border: 1px solid var(--active-border);
-  box-shadow: var(--active-shadow);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(120, 130, 140, 0.5);
+  box-shadow: none;
 }
 
 .tab-main:focus-visible {
