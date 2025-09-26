@@ -300,6 +300,11 @@ function buildGroupSection(entry) {
   const collapsed = state.collapsedGroups.has(id);
   header.dataset.collapsed = collapsed ? 'true' : 'false';
 
+  const folderIcon = clone.querySelector('.group-folder-icon');
+  if (folderIcon) {
+    folderIcon.src = collapsed ? 'assets/group-closed.svg' : 'assets/group-open.svg';
+  }
+
   const colorEl = clone.querySelector('.group-color');
   const mapped = GROUP_COLORS[group.color] || GROUP_COLORS.grey;
   colorEl.style.background = mapped;

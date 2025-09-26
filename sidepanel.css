@@ -199,28 +199,25 @@ body {
   transition: background 0.18s ease, color 0.18s ease;
 }
 
+.group-folder-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
 .group-header:hover {
   background: rgba(255, 255, 255, 0.38);
 }
 
-.group-header[data-collapsed="true"] .group-count::after {
-  content: " (collapsed)";
-  color: var(--text-subtle);
-  font-size: 11px;
-}
-
 .group-color {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  display: none;
 }
 
 .group-title {
   flex: 1;
   font-weight: 600;
   text-align: left;
+  margin-left: 4px;
 }
 
 .group-count {
