@@ -259,8 +259,6 @@ function buildTabItem(tab) {
   const titleEl = mainButton.querySelector('.tab-title');
   titleEl.textContent = displayTitle;
 
-  const urlEl = mainButton.querySelector('.tab-url');
-  urlEl.textContent = formatUrl(tab.url);
 
   if (isEditing) {
     mainButton.setAttribute('aria-label', 'Editing tab title');
@@ -283,10 +281,6 @@ function buildTabItem(tab) {
     });
   }
 
-  const menuButton = clone.querySelector('.tab-menu-button');
-  if (menuButton) {
-    menuButton.dataset.tabId = String(tab.id);
-  }
 
   return clone;
 }
@@ -1196,19 +1190,6 @@ function attachEventHandlers() {
       return;
     }
 
-    const menuButton = event.target.closest('.tab-menu-button');
-    if (menuButton) {
-      const tabItem = menuButton.closest('.tab-item');
-      if (!tabItem) {
-        return;
-      }
-      const tabId = Number(tabItem.dataset.tabId);
-      const tab = tabCache.get(tabId);
-      if (tab) {
-        openTabMenu(tab, { anchor: menuButton });
-      }
-      return;
-    }
 
     const mainButton = event.target.closest('.tab-main');
     if (!mainButton) {
@@ -1273,7 +1254,7 @@ function attachEventHandlers() {
     const tabId = Number(tabItem.dataset.tabId);
     const tab = tabCache.get(tabId);
     if (tab) {
-      const anchor = event.target.closest('.tab-menu-button') || event.target.closest('.tab-main') || tabItem;
+      const anchor = event.target.closest('.tab-main') || tabItem;
       openTabMenu(tab, { anchor });
     }
   });
