@@ -208,6 +208,14 @@ body {
   transition: background 0.18s ease, color 0.18s ease;
 }
 
+.group-header[draggable="true"] {
+  cursor: grab;
+}
+
+.group-header.dragging {
+  cursor: grabbing;
+}
+
 .group-folder-icon {
   width: 20px;
   height: 20px;
@@ -238,6 +246,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding-left: 16px;
 }
 
 .tab-item {
@@ -304,6 +313,67 @@ body {
   overflow: hidden;
 }
 
+.tab-close {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  margin-left: auto;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.tab-item:hover .tab-close,
+.tab-item:focus-within .tab-close,
+.tab-item.active .tab-close {
+  opacity: 1;
+  pointer-events: auto;
+  color: var(--text-muted);
+}
+
+.tab-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--text);
+}
+
+.tab-close:active {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tab-close:focus-visible {
+  outline: 2px solid rgba(120, 130, 210, 0.55);
+  outline-offset: 2px;
+}
+
+.tab-close::before,
+.tab-close::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  top: 50%;
+  left: 50%;
+  transform-origin: center;
+}
+
+.tab-close::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.tab-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
 .tab-main:hover {
   background: rgba(255, 255, 255, 0.4);
 }
@@ -323,6 +393,19 @@ body {
 .group-header.is-drop-target {
   border-color: rgba(120, 130, 210, 0.45);
   background: rgba(120, 130, 210, 0.25);
+}
+
+.tab-group.drop-target-before .group-header,
+.tab-group.drop-target-after .group-header {
+  background: rgba(120, 130, 210, 0.2);
+}
+
+.tab-group.drop-target-before .group-header {
+  box-shadow: inset 0 4px 0 0 rgba(120, 130, 210, 0.4);
+}
+
+.tab-group.drop-target-after .group-header {
+  box-shadow: inset 0 -4px 0 0 rgba(120, 130, 210, 0.4);
 }
 
 .tab-favicon {

@@ -21,6 +21,7 @@ const state = {
   collapsedGroups: new Set(),
   currentGroups: new Map(),
   draggedTabId: null,
+  draggedGroupId: null,
   currentTabs: [],
   customTitles: new Map(),
   editingTabId: null
@@ -259,6 +260,12 @@ function buildTabItem(tab) {
   const titleEl = mainButton.querySelector('.tab-title');
   titleEl.textContent = displayTitle;
 
+  const closeButton = clone.querySelector('.tab-close');
+  if (closeButton) {
+    closeButton.dataset.tabId = String(tab.id);
+    closeButton.title = 'Close tab';
+  }
+
 
   if (isEditing) {
     mainButton.setAttribute('aria-label', 'Editing tab title');
@@ -293,6 +300,8 @@ function buildGroupSection(entry) {
   const header = clone.querySelector('.group-header');
   const collapsed = state.collapsedGroups.has(id);
   header.dataset.collapsed = collapsed ? 'true' : 'false';
+  header.draggable = true;
+  header.dataset.groupId = String(id);
 
   const folderIcon = clone.querySelector('.group-folder-icon');
   if (folderIcon) {
@@ -399,6 +408,13 @@ function getDraggedTab() {
   return tabCache.get(state.draggedTabId) || null;
 }
 
+function getDraggedGroup() {
+  if (typeof state.draggedGroupId !== 'number') {
+    return null;
+  }
+  return state.currentGroups.get(state.draggedGroupId) || null;
+}
+
 function clampIndexForGroup(groupId, index) {
   if (!Array.isArray(state.currentTabs) || !state.currentTabs.length) {
     return index;
@@ -420,6 +436,27 @@ function clampIndexForGroup(groupId, index) {
   const firstIndex = groupTabs[0].index;
   const lastIndex = groupTabs[groupTabs.length - 1].index;
   return Math.min(Math.max(index, firstIndex), lastIndex + 1);
+}
+
+function getGroupRange(groupId) {
+  if (typeof groupId !== 'number') {
+    return null;
+  }
+  const tabs = (state.currentTabs || [])
+    .filter((tab) => tab.groupId === groupId)
+    .sort((a, b) => a.index - b.index);
+
+  if (!tabs.length) {
+    return null;
+  }
+
+  const firstIndex = tabs[0].index;
+  const lastIndex = tabs[tabs.length - 1].index;
+  return {
+    firstIndex,
+    lastIndex,
+    size: tabs.length
+  };
 }
 
 function getDropContext(draggedTab, targetTab) {
@@ -457,6 +494,83 @@ function determineDropPosition(event, element) {
   return event.clientY >= midpoint ? 'after' : 'before';
 }
 
+function handleGroupDragOverTab(event, tabItem) {
+  const draggedGroupId = state.draggedGroupId;
+  if (typeof draggedGroupId !== 'number') {
+    return false;
+  }
+
+  const tabId = Number(tabItem.dataset.tabId);
+  if (Number.isNaN(tabId)) {
+    if (currentDropTargetItem === tabItem) {
+      clearItemDropTarget();
+    }
+    return false;
+  }
+
+  const targetTab = tabCache.get(tabId);
+  if (!targetTab || targetTab.groupId === draggedGroupId) {
+    if (currentDropTargetItem === tabItem) {
+      clearItemDropTarget();
+    }
+    return false;
+  }
+
+  if (!getGroupRange(draggedGroupId)) {
+    return false;
+  }
+
+  const position = determineDropPosition(event, tabItem);
+  setItemDropTarget(tabItem, position, {
+    type: 'group-reorder',
+    targetType: 'tab',
+    targetId: tabId
+  });
+  clearGroupDropTarget();
+
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
+}
+
+function handleGroupDragOverGroup(event, section, header) {
+  const draggedGroupId = state.draggedGroupId;
+  if (typeof draggedGroupId !== 'number') {
+    return false;
+  }
+
+  const groupId = Number(section.dataset.groupId);
+  if (Number.isNaN(groupId) || groupId === draggedGroupId) {
+    if (currentDropTargetItem === section) {
+      clearItemDropTarget();
+    }
+    return false;
+  }
+
+  if (!getGroupRange(draggedGroupId)) {
+    return false;
+  }
+
+  const anchor = header || section;
+  const position = determineDropPosition(event, anchor);
+  setItemDropTarget(section, position, {
+    type: 'group-reorder',
+    targetType: 'group',
+    targetId: groupId
+  });
+  clearGroupDropTarget();
+
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
+}
+
 async function moveTabRelative(draggedTab, targetTab, position, context) {
   if (!context || context.type !== 'reorder') {
     return false;
@@ -486,6 +600,66 @@ async function moveTabRelative(draggedTab, targetTab, position, context) {
     return true;
   } catch (error) {
     console.error('Unable to reorder tab', { draggedTab, targetTab, position, error });
+    return false;
+  }
+}
+
+async function moveGroupRelative(groupId, target, position) {
+  if (typeof groupId !== 'number' || !target || !position) {
+    return false;
+  }
+
+  const range = getGroupRange(groupId);
+  if (!range) {
+    return false;
+  }
+
+  let desiredIndex = range.firstIndex;
+
+  if (target.type === 'tab') {
+    const targetTab = tabCache.get(Number(target.id));
+    if (!targetTab || targetTab.groupId === groupId) {
+      return false;
+    }
+    desiredIndex = position === 'after' ? targetTab.index + 1 : targetTab.index;
+  } else if (target.type === 'group') {
+    const targetGroupId = Number(target.id);
+    if (Number.isNaN(targetGroupId) || targetGroupId === groupId) {
+      return false;
+    }
+    const targetRange = getGroupRange(targetGroupId);
+    if (!targetRange) {
+      return false;
+    }
+    desiredIndex = position === 'after' ? targetRange.lastIndex + 1 : targetRange.firstIndex;
+  } else {
+    return false;
+  }
+
+  if (range.firstIndex < desiredIndex) {
+    desiredIndex -= range.size;
+  }
+
+  if (desiredIndex < 0) {
+    desiredIndex = 0;
+  }
+
+  if (desiredIndex === range.firstIndex) {
+    return false;
+  }
+
+  const group = state.currentGroups.get(groupId);
+  const moveOptions = { index: desiredIndex };
+  const windowId = typeof group?.windowId === 'number' ? group.windowId : state.windowId;
+  if (typeof windowId === 'number') {
+    moveOptions.windowId = windowId;
+  }
+
+  try {
+    await chromeAsync(chrome.tabGroups, 'move', groupId, moveOptions);
+    return true;
+  } catch (error) {
+    console.error('Unable to move group', { groupId, target, position, error });
     return false;
   }
 }
@@ -595,6 +769,78 @@ async function handleTabItemDrop(event, tabItem) {
     }
   }
 
+  return false;
+}
+
+async function handleGroupDrop(event) {
+  const groupId = state.draggedGroupId;
+  if (typeof groupId !== 'number') {
+    return false;
+  }
+
+  const completeDrop = async (target, indicatorElement, anchorElement = indicatorElement) => {
+    if (!target || !indicatorElement || !anchorElement) {
+      return false;
+    }
+
+    const position = currentDropTargetItem === indicatorElement && currentDropPosition
+      ? currentDropPosition
+      : determineDropPosition(event, anchorElement);
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    clearDropIndicators();
+    state.draggedGroupId = null;
+
+    try {
+      const moved = await moveGroupRelative(groupId, target, position);
+      if (moved) {
+        scheduleRefresh();
+      }
+      return true;
+    } catch (error) {
+      console.error('Unable to complete group drop', error);
+      return true;
+    }
+  };
+
+  const tabItem = event.target.closest('.tab-item');
+  if (tabItem) {
+    const targetTabId = Number(tabItem.dataset.tabId);
+    if (!Number.isNaN(targetTabId)) {
+      return completeDrop({ type: 'tab', id: targetTabId }, tabItem);
+    }
+    return false;
+  }
+
+  const section = event.target.closest('.tab-group');
+  if (section) {
+    const targetGroupId = Number(section.dataset.groupId);
+    if (!Number.isNaN(targetGroupId) && targetGroupId !== groupId) {
+      const header = section.querySelector('.group-header');
+      return completeDrop({ type: 'group', id: targetGroupId }, section, header || section);
+    }
+  }
+
+  if (currentDropContext?.type === 'group-reorder' && currentDropTargetItem) {
+    const context = currentDropContext;
+    if (context.targetType === 'tab') {
+      const targetTabId = Number(context.targetId);
+      if (!Number.isNaN(targetTabId)) {
+        return completeDrop({ type: 'tab', id: targetTabId }, currentDropTargetItem);
+      }
+    } else if (context.targetType === 'group') {
+      const targetGroupId = Number(context.targetId);
+      if (!Number.isNaN(targetGroupId) && targetGroupId !== groupId) {
+        const header = currentDropTargetItem.querySelector?.('.group-header');
+        return completeDrop({ type: 'group', id: targetGroupId }, currentDropTargetItem, header || currentDropTargetItem);
+      }
+    }
+  }
+
+  clearDropIndicators();
+  state.draggedGroupId = null;
   return false;
 }
 
@@ -898,6 +1144,11 @@ function buildTabMenuOptions(tab) {
   });
 
   options.push({
+    label: 'Duplicate tab',
+    action: () => duplicateTab(tab)
+  });
+
+  options.push({
     label: 'Rename tab…',
     action: async () => {
       promptRenameTab(tab.id);
@@ -1024,6 +1275,34 @@ async function createGroupFromTab(tab) {
   }
 }
 
+async function duplicateTab(tab) {
+  const tabId = Number(tab.id);
+  if (Number.isNaN(tabId)) {
+    return false;
+  }
+  try {
+    await chromeAsync(chrome.tabs, 'duplicate', tabId);
+    return true;
+  } catch (error) {
+    console.error('Unable to duplicate tab', tabId, error);
+    return false;
+  }
+}
+
+async function closeTab(tabId) {
+  const id = Number(tabId);
+  if (Number.isNaN(id)) {
+    return false;
+  }
+  try {
+    await chromeAsync(chrome.tabs, 'remove', id);
+    return true;
+  } catch (error) {
+    console.error('Unable to close tab', id, error);
+    return false;
+  }
+}
+
 async function activateTab(tabId) {
   try {
     await chromeAsync(chrome.tabs, 'update', Number(tabId), { active: true });
@@ -1087,6 +1366,7 @@ function attachEventHandlers() {
 
     closeContextMenu();
     clearDropIndicators();
+    state.draggedGroupId = null;
     state.draggedTabId = tabId;
     button.classList.add('dragging');
 
@@ -1174,7 +1454,22 @@ function attachEventHandlers() {
     });
   }
 
-  collectionsContainer.addEventListener('click', (event) => {
+  collectionsContainer.addEventListener('click', async (event) => {
+    const closeButton = event.target.closest('.tab-close');
+    if (closeButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const tabItem = closeButton.closest('.tab-item');
+      const tabId = Number(tabItem?.dataset.tabId);
+      if (!Number.isNaN(tabId)) {
+        const closed = await closeTab(tabId);
+        if (closed) {
+          scheduleRefresh();
+        }
+      }
+      return;
+    }
+
     const groupHeader = event.target.closest('.group-header');
     if (groupHeader) {
       const section = groupHeader.closest('.tab-group');
@@ -1285,6 +1580,30 @@ function attachEventHandlers() {
   });
 
   collectionsContainer.addEventListener('dragstart', (event) => {
+    const groupHeader = event.target.closest('.group-header');
+    if (groupHeader && groupHeader.draggable) {
+      const groupId = Number(groupHeader.dataset.groupId);
+      if (!Number.isNaN(groupId)) {
+        closeContextMenu();
+        clearDropIndicators();
+        state.draggedTabId = null;
+        state.draggedGroupId = groupId;
+        groupHeader.classList.add('dragging');
+
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move';
+          try {
+            event.dataTransfer.setData('application/x-side-group-id', String(groupId));
+            const group = state.currentGroups.get(groupId);
+            event.dataTransfer.setData('text/plain', group?.title || 'Tab Group');
+          } catch (error) {
+            console.warn('Unable to set drag data for group:', error);
+          }
+        }
+        return;
+      }
+    }
+
     const tabItem = event.target.closest('.tab-item');
     if (!tabItem || !tabItem.draggable) {
       return;
@@ -1316,18 +1635,31 @@ function attachEventHandlers() {
   });
 
   collectionsContainer.addEventListener('dragend', (event) => {
+    const groupHeader = event.target.closest('.group-header');
+    if (groupHeader) {
+      groupHeader.classList.remove('dragging');
+    }
+
     const tabItem = event.target.closest('.tab-item');
     if (tabItem) {
       tabItem.classList.remove('dragging');
     }
+
     state.draggedTabId = null;
+    state.draggedGroupId = null;
     clearDropIndicators();
   });
 
   collectionsContainer.addEventListener('dragenter', (event) => {
+    const draggedGroup = getDraggedGroup();
     const tabItem = event.target.closest('.tab-item');
-    if (tabItem && handleTabItemDragMove(event, tabItem)) {
-      return;
+    if (tabItem) {
+      if (draggedGroup && handleGroupDragOverTab(event, tabItem)) {
+        return;
+      }
+      if (handleTabItemDragMove(event, tabItem)) {
+        return;
+      }
     }
 
     const header = event.target.closest('.group-header');
@@ -1337,6 +1669,10 @@ function attachEventHandlers() {
 
     const section = header.closest('.tab-group');
     if (!section) {
+      return;
+    }
+
+    if (draggedGroup && handleGroupDragOverGroup(event, section, header)) {
       return;
     }
 
@@ -1360,9 +1696,15 @@ function attachEventHandlers() {
   });
 
   collectionsContainer.addEventListener('dragover', (event) => {
+    const draggedGroup = getDraggedGroup();
     const tabItem = event.target.closest('.tab-item');
-    if (tabItem && handleTabItemDragMove(event, tabItem)) {
-      return;
+    if (tabItem) {
+      if (draggedGroup && handleGroupDragOverTab(event, tabItem)) {
+        return;
+      }
+      if (handleTabItemDragMove(event, tabItem)) {
+        return;
+      }
     }
 
     const header = event.target.closest('.group-header');
@@ -1372,6 +1714,10 @@ function attachEventHandlers() {
 
     const section = header.closest('.tab-group');
     if (!section) {
+      return;
+    }
+
+    if (draggedGroup && handleGroupDragOverGroup(event, section, header)) {
       return;
     }
 
@@ -1412,18 +1758,34 @@ function attachEventHandlers() {
       return;
     }
 
-    event.stopPropagation();
     const related = event.relatedTarget;
     if (related && section.contains(related)) {
       return;
     }
 
+    const draggedGroup = getDraggedGroup();
+    if (draggedGroup) {
+      event.stopPropagation();
+      if (currentDropTargetItem === section) {
+        clearItemDropTarget();
+      }
+      return;
+    }
+
+    event.stopPropagation();
     if (currentDropTargetSection === section) {
       clearGroupDropTarget();
     }
   });
 
   collectionsContainer.addEventListener('drop', async (event) => {
+    if (typeof state.draggedGroupId === 'number') {
+      const handledGroup = await handleGroupDrop(event);
+      if (handledGroup) {
+        return;
+      }
+    }
+
     const tabItem = event.target.closest('.tab-item');
     if (tabItem) {
       const handled = await handleTabItemDrop(event, tabItem);
